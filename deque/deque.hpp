@@ -9,6 +9,26 @@ namespace sjtu {
 
 template<class T>
 class deque {
+private:
+	// data members.
+	T* data;
+	size_t current_size;
+	size_t current_capacity;
+	static T *allocate(const size_t &capacity) {
+		if(capacity == 0) return nullptr;
+		if(capacity > static_cast<size_t>(-1) / sizeof(T)) throw runtime_error();
+		return static_cast<T *>(::operator new(sizeof(T) * capacity));
+	}
+	static void destroy(T *ptr, size_t count) {
+		while(count > 0) ptr[--count].~T();
+	}
+	size_t next_capacity() const {
+		const size_t max_capacity = static_cast<size_t>(-1) / sizeof(T);
+		if(current_capacity >= max_capacity) throw runtime_error();
+		if(current_capacity == 0) return 1;
+		if(current_capacity > max_capacity / 2) return max_capacity;
+		return current_capacity * 2;
+	}
 public:
 	class const_iterator;
 	class iterator {
@@ -17,6 +37,9 @@ public:
 		 * TODO add data members
 		 *   just add whatever you want.
 		 */
+		size_t index;
+		deque* my_deque;
+		iterator(deque *deq, size_t idx) : my_deque(deq), index(idx) {}
 	public:
 		/**
 		 * return a new iterator which pointer n-next elements
@@ -25,37 +48,65 @@ public:
 		 */
 		iterator operator+(const int &n) const {
 			//TODO
+			iterator tmp = *this;
+			tmp += n;
+			return tmp;
 		}
 		iterator operator-(const int &n) const {
 			//TODO
+			iterator tmp = *this;
+			tmp -= n;
+			return tmp;
 		}
 		// return th distance between two iterator,
 		// if these two iterators points to different vectors, throw invaild_iterator.
 		int operator-(const iterator &rhs) const {
 			//TODO
+			if(my_deque != rhs.my_deque || my_deque == nullptr) throw invalid_iterator();
+			return index - rhs.index;
 		}
 		iterator operator+=(const int &n) {
 			//TODO
+			if(my_deque == nullptr || index + n < 0 || index + n > my_deque->size()) throw invalid_iterator();
+			index += n;
+			return *this;
 		}
 		iterator operator-=(const int &n) {
 			//TODO
+			if(my_deque == nullptr || index - n < 0 || index - n > my_deque->size()) throw invalid_iterator();
+			index -= n;
+			return *this;
 		}
 		/**
 		 * TODO iter++
 		 */
-		iterator operator++(int) {}
+		iterator operator++(int) {
+			iterator tmp = *this;
+			++(*this);
+			return tmp;
+		}
 		/**
 		 * TODO ++iter
 		 */
-		iterator& operator++() {}
+		iterator& operator++() {
+			return *this += 1;
+		}
 		/**
 		 * TODO iter--
 		 */
-		iterator operator--(int) {}
+		iterator operator--(int) {
+			iterator tmp = *this;
+			--(*this);
+			return tmp;
+		}
 		/**
 		 * TODO --iter
 		 */
-		iterator& operator--() {}
+		iterator& operator--() {
+			iterator tmp = *this;
+			tmp -= 1;
+			return tmp;
+		}
 		/**
 		 * TODO *it
 		 */
@@ -92,32 +143,63 @@ public:
 			}
 			const_iterator operator-(const int &n) const {
 				//TODO
+				const_iterator tmp = *this;
+				tmp -= n;
+				return tmp;
 			}
 			int operator-(const const_iterator &rhs) const {
 				//TODO
+				if(my_deque != rhs.my_deque || my_deque == nullptr) throw invalid_iterator();
+				return index - rhs.index;
 			}
 			const_iterator operator+=(const int &n) {
 				//TODO
+				if(my_deque == nullptr || index + n < 0 || index + n >= my_deque->size()) throw invalid_iterator();
+				index += n;
+				return *this;
 			}
 			const_iterator operator-=(const int &n) {
 				//TODO
+				if(my_deque == nullptr || index - n < 0 || index - n >= my_deque->size()) throw invalid_iterator();
+				index -= n;
+				return *this;
 			}
-			const_iterator operator++(int) {}
-			const_iterator& operator++() {}
-			const_iterator operator--(int) {}
-			const_iterator& operator--() {}
+			const_iterator operator++(int) {
+				const_iterator tmp = *this;
+				++(*this);
+				return tmp;
+			}
+			const_iterator& operator++() {
+				return *this += 1;
+			}
+			const_iterator operator--(int) {
+				const_iterator tmp = *this;
+				--(*this);
+				return tmp;
+			}
+			const_iterator& operator--() {
+				return *this -= 1;
+			}
 			const T& operator*() const {}
 			const T* operator->() const noexcept {}
-			bool operator==(const iterator &rhs) const {}
-			bool operator==(const const_iterator &rhs) const {}
-			bool operator!=(const iterator &rhs) const {}
-			bool operator!=(const const_iterator &rhs) const {}
+			bool operator==(const iterator &rhs) const {
+				return my_deque == rhs.my_deque && index == rhs.index;
+			}
+			bool operator==(const const_iterator &rhs) const {
+				return my_deque == rhs.my_deque && index == rhs.index;
+			}
+			bool operator!=(const iterator &rhs) const {
+				return !(*this == rhs);
+			}
+			bool operator!=(const const_iterator &rhs) const {
+				return !(*this == rhs);
+			}
 	};
 	/**
 	 * TODO Constructors
 	 */
 	deque() {}
-	deque(const deque &other) {}
+	deque(const deque &other) : data(other.data) , current_size(other.current_size) , current_capacity(other.current_capacity) {}
 	/**
 	 * TODO Deconstructor
 	 */
@@ -157,15 +239,25 @@ public:
 	/**
 	 * checks whether the container is empty.
 	 */
-	bool empty() const {}
+	bool empty() const {
+		return current_size == 0;
+	}
 	/**
 	 * returns the number of elements
 	 */
-	size_t size() const {}
+	size_t size() const {
+		return current_size;
+	}
 	/**
 	 * clears the contents
 	 */
-	void clear() {}
+	void clear() {
+		destroy(data, current_size);
+		::operator delete(data);
+		data = nullptr;
+		current_size = 0;
+		current_capacity = 0;
+	}
 	/**
 	 * inserts elements at the specified locat on in the container.
 	 * inserts value before pos
