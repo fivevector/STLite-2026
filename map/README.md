@@ -66,3 +66,7 @@ ctest --test-dir build -R '^map_.*_memcheck$' --output-on-failure
 ## 截止日期
 
 作业时间为三周，即 ddl 设在第九周周一上机课之前(4月27号 18:30)，大家合理安排时间完成~
+
+## 注
+
+个人使用红黑树完成，已通过OJ测试。
